@@ -1,8 +1,39 @@
-{{ if .Title }}
-  <figure>
-    <img src="{{ .Destination | safeURL }}" alt="{{ .Text }}" class="figcaption-img">
-    <figcaption>{{ .Title }}</figcaption>
-  </figure>
-{{ else }}
-  <img src="{{ .Destination | safeURL }}" alt="{{ .Text }}">
-{{ end }}
+{{- $u := urls.Parse .Destination -}}
+{{- $src := $u.String -}}
+{{- $alt := .Text -}}
+{{- $title := .Title -}}
+
+<figure>
+  {{- if not $u.IsAbs -}}
+    {{- $path := strings.TrimPrefix "./" $u.Path }}
+    {{- with or (.PageInner.Resources.Get $path) (resources.Get $path) -}}
+      {{- $image := .Resize "1920x" -}}
+      {{- $webp := $image.Resize "1920x webp" -}}
+      {{- $src = $webp.RelPermalink -}}
+      {{- if $u.RawQuery }}{{ $src = print $src "?" $u.RawQuery }}{{ end -}}
+      {{- if $u.Fragment }}{{ $src = print $src "#" $u.Fragment }}{{ end -}}
+    {{- else -}}
+      {{- $image := .Process "webp" -}}
+      {{- $src = $image.RelPermalink -}}
+      {{- if $u.RawQuery }}{{ $src = print $src "?" $u.RawQuery }}{{ end -}}
+      {{- if $u.Fragment }}{{ $src = print $src "#" $u.Fragment }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+
+  <img src="{{ $src }}" alt="{{ $alt }}" loading="lazy"{{ with $title }} title="{{ . }}"{{ end }}>
+
+  {{- with $title -}}
+    {{- $parts := split . " | " -}}
+    <figcaption>
+      {{- index $parts 0 | safeHTML -}}
+      {{- if gt (len $parts) 1 -}}
+        <br>
+        {{- range $index, $part := $parts -}}
+          {{- if gt $index 0 -}}
+            {{- $part | markdownify -}}<br>
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    </figcaption>
+  {{- end -}}
+</figure>
